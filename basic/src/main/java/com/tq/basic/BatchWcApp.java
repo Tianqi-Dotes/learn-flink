@@ -15,20 +15,27 @@ public class BatchWcApp {
     public static void main(String[] args) throws Exception {
         ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
         DataSource<String> source = env.readTextFile("data/wc.data");
-        source.flatMap(new FlatMapFunction<String, String>() {
-            @Override
-            public void flatMap(String value, Collector<String> out) throws Exception {
-                String[] split = value.split(",");
-                for (String s : split) {
-                    out.collect(s.toLowerCase().trim());
-                }
-            }
-        }).map(new MapFunction<String, Tuple2<String,Integer>>() {
-            @Override
-            public Tuple2<String, Integer> map(String value) throws Exception {
-                return new Tuple2<>(value,1);
-            }
-        }).groupBy(0).sum(1).print();
+        source.flatMap(new BatchFlatMapFunction())
+                .map(new BatchMapFunction())
+                .groupBy(0).sum(1).print();
 
+    }
+}
+
+class BatchFlatMapFunction implements FlatMapFunction<String, String>{
+
+    @Override
+    public void flatMap(String value, Collector<String> out) throws Exception {
+        String[] split = value.split(",");
+        for (String s : split) {
+            out.collect(s.toLowerCase().trim());
+        }
+    }
+}
+class BatchMapFunction implements MapFunction<String, Tuple2<String,Integer>>{
+
+    @Override
+    public Tuple2<String, Integer> map(String value) throws Exception {
+        return new Tuple2<>(value,1);
     }
 }
