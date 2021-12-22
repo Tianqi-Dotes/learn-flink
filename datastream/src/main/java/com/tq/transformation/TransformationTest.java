@@ -1,5 +1,6 @@
 package com.tq.transformation;
 
+import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -13,9 +14,37 @@ public class TransformationTest {
         //创建上下文
         StreamExecutionEnvironment en=StreamExecutionEnvironment.getExecutionEnvironment();
 
-        //map(en);
+        filter(en);
         en.execute("TransformationTest");
     }
+
+    /**
+     * data stream  过滤操作
+     * @param en
+     */
+    public static void filter(StreamExecutionEnvironment en) {
+        //access.log line data->object
+        DataStreamSource<String> source = en.readTextFile("logs/access.log");
+        SingleOutputStreamOperator<Access> map = source.map(new MapFunction<String, Access>() {
+            @Override
+            public Access map(String value) throws Exception {
+                String[] split = value.split(",");
+                Access access = new Access();
+                access.setDate(Long.parseLong(split[0]));
+                access.setWebsite(split[1]);
+                access.setConsume(Integer.valueOf(split[2]));
+                return access;
+            }
+        });
+        SingleOutputStreamOperator<Access> filter = map.filter(new FilterFunction<Access>() {
+            @Override
+            public boolean filter(Access value) throws Exception {
+                return value.getConsume() > 4000;
+            }
+        });
+        filter.print();
+    }
+
 
     /**
      * line data->entity
@@ -37,8 +66,6 @@ public class TransformationTest {
             }
         });
         map.print();*/
-
-
         ArrayList<Integer> list = new ArrayList<>();
         list.add(1);
         list.add(2);
