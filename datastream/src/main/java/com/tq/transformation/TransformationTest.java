@@ -20,11 +20,18 @@ public class TransformationTest {
     public static void main(String[] args) throws Exception {
         //创建上下文
         StreamExecutionEnvironment en=StreamExecutionEnvironment.getExecutionEnvironment();
-
-        reduce(en);
+        en.setParallelism(3);
+        //reduce(en);
+        richMap(en);
         en.execute("TransformationTest");
     }
 
+
+    public static void richMap(StreamExecutionEnvironment en) {
+        DataStreamSource<String> source = en.readTextFile("logs/access.log");
+        SingleOutputStreamOperator<Access> map = source.map(new AccessMapFunction());
+        map.print();
+    }
 
     /**
      * 读入数据
