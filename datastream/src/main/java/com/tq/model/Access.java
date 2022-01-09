@@ -1,4 +1,4 @@
-package com.tq.transformation;
+package com.tq.model;
 
 import lombok.Data;
 

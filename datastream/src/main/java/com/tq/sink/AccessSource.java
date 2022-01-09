@@ -1,6 +1,6 @@
 package com.tq.sink;
 
-import com.tq.transformation.Access;
+import com.tq.model.Access;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 
 import java.util.Random;

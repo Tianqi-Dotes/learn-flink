@@ -1,8 +1,10 @@
 package com.tq.datastream;
 
+import com.tq.model.Student;
 import com.tq.sink.AccessSource;
 import com.tq.sink.AccessSourceMulti;
-import com.tq.transformation.Access;
+import com.tq.model.Access;
+import com.tq.sink.StudentSource;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
@@ -11,8 +13,6 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.util.NumberSequenceIterator;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Properties;
 
 public class DataStreamTest {
@@ -23,8 +23,18 @@ public class DataStreamTest {
 
         //test03(en);
         //test04(en);
-        test05(en);
+        //test05(en);
+        test06(en);
         en.execute("DataStreamTest");
+    }
+
+    //自定义 mysql source
+    public static void test06(StreamExecutionEnvironment en){
+
+        //source 并行度默认为cpu线程数
+        DataStreamSource<Student> accessDataStreamSource = en.addSource(new StudentSource());
+        System.out.println(accessDataStreamSource.getParallelism());
+        accessDataStreamSource.print();
     }
 
     //多线程source

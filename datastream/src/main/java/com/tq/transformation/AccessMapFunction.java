@@ -3,7 +3,7 @@ package com.tq.transformation;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.configuration.Configuration;
-import com.tq.transformation.Access;
+import com.tq.model.Access;
 
 public class AccessMapFunction extends RichMapFunction<String,Access> {
 
