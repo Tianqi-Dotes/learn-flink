@@ -34,9 +34,39 @@ public class DataStreamTest {
 
         //test07(en);//union
 
-        test08(en);//connect
+        //test08(en);//connect
+        coMap(en);//comap
         en.execute("DataStreamTest");
     }
+
+
+    //comap 不同处理
+    public static void coMap(StreamExecutionEnvironment en){
+
+        DataStreamSource<String> source1 = en.socketTextStream("localhost", 9527);
+        SingleOutputStreamOperator<Integer> source2 = en.socketTextStream("localhost", 9528)
+                .map(new MapFunction<String, Integer>() {
+                    @Override
+                    public Integer map(String value) throws Exception {
+                        return Integer.valueOf(value);
+                    }
+                });
+
+        //connect获得 connectedStream 后coMap connectedStream->datastream
+        source1.connect(source2).map(new CoMapFunction<String, Integer, String>() {
+            @Override
+            public String map1(String value) throws Exception {//处理stream1
+                return value.toUpperCase();
+            }
+
+            @Override
+            public String map2(Integer value) throws Exception {//处理stream2
+                return value * 10 + "";
+            }
+        }).print();
+
+    }
+
 
     //connect 不同类型 共享状态
     public static void test08(StreamExecutionEnvironment en){
@@ -49,8 +79,8 @@ public class DataStreamTest {
                 return Tuple2.of("tq", value);
             }
         });
-        //不同类型connect
-        source1.connect(tq).map(new CoMapFunction<Access, Tuple2, String>() {
+        //不同类型connect  对2个流做不同的处理
+        source1.connect(tq).map(new CoMapFunction<Access, Tuple2, String>() { //coMap connectedStream->datastream
             @Override
             public String map1(Access value) throws Exception {
                 return value.toString();
@@ -69,6 +99,7 @@ public class DataStreamTest {
         DataStreamSource<String> source1 = en.socketTextStream("localhost", 9527);
         DataStreamSource<String> source2 = en.socketTextStream("localhost", 9528);
 
+        //union直接合并
         DataStream<String> union = source1.union(source2);
         union.print();
 
