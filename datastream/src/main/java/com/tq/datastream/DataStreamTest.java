@@ -6,10 +6,15 @@ import com.tq.sink.AccessSourceMulti;
 import com.tq.model.Access;
 import com.tq.sink.StudentSource;
 import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.streaming.api.datastream.ConnectedStreams;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.co.CoMapFunction;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.util.NumberSequenceIterator;
 
@@ -20,12 +25,53 @@ public class DataStreamTest {
     public static void main(String[] args) throws Exception {
         //创建上下文
         StreamExecutionEnvironment en=StreamExecutionEnvironment.getExecutionEnvironment();
-
+        //test01(en);//filter
+        //test02(en);//
         //test03(en);
         //test04(en);
         //test05(en);
-        test06(en);
+        //test06(en);
+
+        //test07(en);//union
+
+        test08(en);//connect
         en.execute("DataStreamTest");
+    }
+
+    //connect 不同类型 共享状态
+    public static void test08(StreamExecutionEnvironment en){
+
+        DataStreamSource<Access> source1 = en.addSource(new AccessSource());
+        DataStreamSource<Access> source2 = en.addSource(new AccessSource());
+        SingleOutputStreamOperator<Tuple2> tq = source2.map(new MapFunction<Access, Tuple2>() {
+            @Override
+            public Tuple2 map(Access value) throws Exception {
+                return Tuple2.of("tq", value);
+            }
+        });
+        //不同类型connect
+        source1.connect(tq).map(new CoMapFunction<Access, Tuple2, String>() {
+            @Override
+            public String map1(Access value) throws Exception {
+                return value.toString();
+            }
+
+            @Override
+            public String map2(Tuple2 value) throws Exception {
+                return value.f0+"========"+value.f1.toString();
+            }
+        }).print();
+    }
+
+    //union 同类型 多流合并
+    public static void test07(StreamExecutionEnvironment en){
+
+        DataStreamSource<String> source1 = en.socketTextStream("localhost", 9527);
+        DataStreamSource<String> source2 = en.socketTextStream("localhost", 9528);
+
+        DataStream<String> union = source1.union(source2);
+        union.print();
+
     }
 
     //自定义 mysql source
