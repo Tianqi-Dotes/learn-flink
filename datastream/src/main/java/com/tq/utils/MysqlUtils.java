@@ -11,7 +11,7 @@ public class MysqlUtils {
     public static Connection getMysqlConnection(){
         try {
             Class.forName("com.mysql.jdbc.Driver");
-            return DriverManager.getConnection("jdbc:mysql://localhost:3306/flink","root","root");
+            return DriverManager.getConnection("jdbc:mysql://localhost:3306/flink","root","Stars!@#123");
         }catch (Exception e){
             return null;
         }

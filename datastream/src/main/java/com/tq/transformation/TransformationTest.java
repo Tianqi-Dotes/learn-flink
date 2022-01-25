@@ -21,7 +21,8 @@ public class TransformationTest {
         StreamExecutionEnvironment en=StreamExecutionEnvironment.getExecutionEnvironment();
         en.setParallelism(3);
         //reduce(en);
-        richMap(en);
+        //richMap(en);
+        keyBy(en);
         en.execute("TransformationTest");
     }
 
