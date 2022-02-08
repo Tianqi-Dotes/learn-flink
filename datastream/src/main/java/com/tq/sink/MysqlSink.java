@@ -44,7 +44,7 @@ public class MysqlSink extends RichSinkFunction<Tuple2<String,Integer>> {
     public void invoke(Tuple2<String, Integer> value, Context context) throws Exception {
         super.invoke(value, context);
         //打印对象
-        System.out.println("invoke!!!!!!!!!!!!!!!!object===website:"+value.f0+"===consume:"+value.f1);
+        System.out.println("SinkFunc::::invoke!!!!!!!!!!!!!!!!object===website:"+value.f0+"===consume:"+value.f1);
 
         updatePs.setInt(1,value.f1);
         updatePs.setString(2, value.f0);
