@@ -13,6 +13,7 @@
         <module>sql</module>
         <module>dataset</module>
         <module>basic</module>
+        <module>project</module>
     </modules>
 
     <properties>
