@@ -8,11 +8,22 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.connectors.redis.RedisSink;
+import org.apache.flink.streaming.connectors.redis.common.config.FlinkJedisPoolConfig;
+import org.apache.flink.streaming.connectors.redis.common.mapper.RedisCommand;
+import org.apache.flink.streaming.connectors.redis.common.mapper.RedisCommandDescription;
+import org.apache.flink.streaming.connectors.redis.common.mapper.RedisMapper;
 
 /**
  * 按照操作系统维度   新老用户分析
  */
 public class OsUserCntAppV1 {
+
+    private static FlinkJedisPoolConfig conf;
+
+    static {
+        conf = new FlinkJedisPoolConfig.Builder().setHost("129.211.125.29").setPort(4188).setPassword("#edcVFR4").build();
+    }
 
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment en = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
@@ -53,7 +64,29 @@ public class OsUserCntAppV1 {
         //(Android,1,29) (Android,0,17)
         //(iOS,1,38) (iOS,0,16)
 
+        f2.addSink(new RedisSink<Tuple3<String, Integer, Integer>>(conf, new MyRedisMapper()));
+        //写入redis
         f2.print();
         en.execute("OsUserCntAppV1");
     }
+}
+
+
+class MyRedisMapper implements RedisMapper<Tuple3<String, Integer, Integer>> {
+
+    @Override
+    public RedisCommandDescription getCommandDescription() {
+        return new RedisCommandDescription(RedisCommand.HSET, "tq_osuser_v1");
+    }
+
+    @Override
+    public String getKeyFromData(Tuple3<String, Integer, Integer> data) {
+        return data.f0+data.f1;
+    }
+
+    @Override
+    public String getValueFromData(Tuple3<String, Integer, Integer> data) {
+        return data.f2.toString();
+    }
+
 }
