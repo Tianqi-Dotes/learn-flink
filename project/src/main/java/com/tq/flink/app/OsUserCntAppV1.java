@@ -4,6 +4,8 @@ import com.alibaba.fastjson.JSON;
 import com.tq.flink.domian.Access;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.java.tuple.Tuple1;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
@@ -45,6 +47,26 @@ public class OsUserCntAppV1 {
         //startupStream.print();
 
         //tuple格式 os 新老用户 计数1
+        //SingleOutputStreamOperator f2 = processOsUser(startupStream);
+
+
+        //根据新老用户统计
+        SingleOutputStreamOperator f2 = processNewUser(startupStream);
+
+
+        //写入redis
+        //f2.addSink(new RedisSink<Tuple3<String, Integer, Integer>>(conf, new OsUserRedisMapper()));
+
+        //写入redis
+        f2.addSink(new RedisSink<Tuple2<Integer, Integer>>(conf, new NewUserRedisMapper()));
+
+        f2.print();
+        en.execute("OsUserCntAppV1");
+    }
+
+    //按照os 新老用户维度区分
+    private static SingleOutputStreamOperator processOsUser(SingleOutputStreamOperator<Access> startupStream){
+        //tuple格式 os 新老用户 计数1
         SingleOutputStreamOperator<Tuple3<String, Integer, Integer>> processStream = startupStream.map(new MapFunction<Access, Tuple3<String, Integer, Integer>>() {
             @Override
             public Tuple3<String, Integer, Integer> map(Access value) throws Exception {
@@ -64,15 +86,57 @@ public class OsUserCntAppV1 {
         //(Android,1,29) (Android,0,17)
         //(iOS,1,38) (iOS,0,16)
 
-        f2.addSink(new RedisSink<Tuple3<String, Integer, Integer>>(conf, new MyRedisMapper()));
-        //写入redis
-        f2.print();
-        en.execute("OsUserCntAppV1");
+        return f2;
+    }
+
+    //按照新老用户维度区分
+    private static SingleOutputStreamOperator processNewUser(SingleOutputStreamOperator<Access> startupStream){
+        //tuple格式  新老用户 计数1
+        SingleOutputStreamOperator<Tuple2< Integer, Integer>> processStream = startupStream.map(new MapFunction<Access, Tuple2< Integer, Integer>>() {
+            @Override
+            public Tuple2< Integer, Integer> map(Access value) throws Exception {
+                return Tuple2.of( value.getNu(), 1);
+            }
+        });
+
+        // tuple格式 os 新老用户 计数1 -》对os 新老用户进行keyby 再去sum1
+        SingleOutputStreamOperator<Tuple2<Integer, Integer>> f2 = processStream
+                .keyBy(new KeySelector<Tuple2<Integer, Integer>, Tuple1<Integer>>() {
+                    @Override
+                    public Tuple1<Integer> getKey(Tuple2<Integer, Integer> value) throws Exception {
+                        return Tuple1.of(value.f0);
+                    }
+                }).sum(1)
+                .setParallelism(1);//但并行度 保证顺序
+//(Android,1,29) (Android,0,17)
+        //(iOS,1,38) (iOS,0,16)
+
+        return f2;
     }
 }
 
+class NewUserRedisMapper implements RedisMapper<Tuple2<Integer, Integer>> {
 
-class MyRedisMapper implements RedisMapper<Tuple3<String, Integer, Integer>> {
+    @Override
+    public RedisCommandDescription getCommandDescription() {
+        return new RedisCommandDescription(RedisCommand.HSET, "tq_newuser_v1");
+    }
+
+    @Override
+    public String getKeyFromData(Tuple2<Integer, Integer> data) {
+        return data.f0+"";
+    }
+
+    @Override
+    public String getValueFromData(Tuple2<Integer, Integer> data) {
+        return data.f1+"";
+    }
+
+}
+
+
+
+class OsUserRedisMapper implements RedisMapper<Tuple3<String, Integer, Integer>> {
 
     @Override
     public RedisCommandDescription getCommandDescription() {
