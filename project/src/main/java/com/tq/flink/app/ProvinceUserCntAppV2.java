@@ -2,12 +2,14 @@ package com.tq.flink.app;
 
 import com.alibaba.fastjson.JSON;
 import com.tq.flink.domian.Access;
+import com.tq.flink.udf.GaodeMapAsyncFunction;
 import com.tq.flink.udf.GaodeMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.functions.KeySelector;
-import org.apache.flink.api.java.tuple.Tuple1;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.streaming.api.datastream.AsyncDataStream;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.redis.RedisSink;
@@ -16,10 +18,12 @@ import org.apache.flink.streaming.connectors.redis.common.mapper.RedisCommand;
 import org.apache.flink.streaming.connectors.redis.common.mapper.RedisCommandDescription;
 import org.apache.flink.streaming.connectors.redis.common.mapper.RedisMapper;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * 按照省份   新老用户分析
  */
-public class ProvinceUserCntAppV1 {
+public class ProvinceUserCntAppV2 {
 
     private static FlinkJedisPoolConfig conf;
 
@@ -44,10 +48,10 @@ public class ProvinceUserCntAppV1 {
                 }
             }
         }).filter(x -> x != null)//清洗异常数据
-                .filter(x -> x.getEvent().equals("startup"))//过滤 开机动作 数据
-                .filter(x->!x.getIp().equals(""))
-                .map(new GaodeMapFunction());//映射province
+                .filter(x -> x.getEvent().equals("startup"));//过滤 开机动作 数据
 
+        DataStream<Access> resultStream =
+                AsyncDataStream.unorderedWait(startupStream, new GaodeMapAsyncFunction(), 1000, TimeUnit.MILLISECONDS, 100);
         //startupStream.print();
 
         //tuple格式 os 新老用户 计数1
@@ -55,7 +59,7 @@ public class ProvinceUserCntAppV1 {
 
 
         //根据新老用户统计
-        SingleOutputStreamOperator f2 = processProvinceUser(startupStream);
+        SingleOutputStreamOperator f2 = processProvinceUser(resultStream);
 
 
         //写入redis
@@ -65,13 +69,13 @@ public class ProvinceUserCntAppV1 {
         f2.addSink(new RedisSink<Tuple3<String,Integer, Integer>>(conf, new ProvinceUserRedisMapper()));
 
         f2.print();
-        en.execute("OsUserCntAppV1");
+        en.execute("OsUserCntAppV2");
         long end = System.currentTimeMillis();
         System.out.println(end-start);
     }
 
     //按照省份 新老用户维度区分
-    private static SingleOutputStreamOperator processProvinceUser(SingleOutputStreamOperator<Access> startupStream) {
+    private static SingleOutputStreamOperator processProvinceUser(DataStream<Access> startupStream) {
         //tuple格式 省份 新老用户 计数1
         SingleOutputStreamOperator<Tuple3<String, Integer, Integer>> processStream = startupStream.map(new MapFunction<Access, Tuple3<String, Integer, Integer>>() {
             @Override
@@ -95,25 +99,5 @@ public class ProvinceUserCntAppV1 {
         return f2;
     }
 
-
-}
-
-class
-ProvinceUserRedisMapper implements RedisMapper<Tuple3<String, Integer, Integer>> {
-
-    @Override
-    public RedisCommandDescription getCommandDescription() {
-        return new RedisCommandDescription(RedisCommand.HSET, "tq_prouser");
-    }
-
-    @Override
-    public String getKeyFromData(Tuple3<String, Integer, Integer> data) {
-        return data.f0+"_"+data.f1;
-    }
-
-    @Override
-    public String getValueFromData(Tuple3<String, Integer, Integer> data) {
-        return data.f2.toString();
-    }
 
 }

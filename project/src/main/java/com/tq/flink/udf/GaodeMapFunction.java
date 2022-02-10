@@ -29,6 +29,7 @@ public class GaodeMapFunction extends RichMapFunction<Access,Access> {
     @Override
     public void close() throws Exception {
         //如果使用httpclient 需要关闭httpclient
+        httpClient.close();
     }
 
     @Override

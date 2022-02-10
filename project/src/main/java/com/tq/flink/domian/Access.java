@@ -25,4 +25,9 @@ public class Access {
 
     public Product product;
 
+    public Access setProvince(String pro){
+        this.province=pro;
+        return this;
+    }
+
 }
