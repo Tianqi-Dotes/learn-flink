@@ -19,6 +19,7 @@ public class Access {
     public String ip;  // ==> ip去解析
     public Long time;
     public String version;
+
     public String province;
     public String city;
 

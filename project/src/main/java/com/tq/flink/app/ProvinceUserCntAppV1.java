@@ -2,6 +2,7 @@ package com.tq.flink.app;
 
 import com.alibaba.fastjson.JSON;
 import com.tq.flink.domian.Access;
+import com.tq.flink.udf.GaodeMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple1;
@@ -41,7 +42,9 @@ public class ProvinceUserCntAppV1 {
                 }
             }
         }).filter(x -> x != null)//清洗异常数据
-                .filter(x -> x.getEvent().equals("startup"));//过滤 开机动作 数据
+                .filter(x -> x.getEvent().equals("startup"))//过滤 开机动作 数据
+                .filter(x->!x.getIp().equals(""))
+                .map(new GaodeMapFunction());//映射province
 
         //startupStream.print();
 
@@ -91,7 +94,8 @@ public class ProvinceUserCntAppV1 {
 
 }
 
-class ProvinceUserRedisMapper implements RedisMapper<Tuple3<String, Integer, Integer>> {
+class
+ProvinceUserRedisMapper implements RedisMapper<Tuple3<String, Integer, Integer>> {
 
     @Override
     public RedisCommandDescription getCommandDescription() {

@@ -12,6 +12,6 @@ public class PureTest {
 
     public static void main(String[] args) {
 
-        MapUtils.getIpProvinceFromGaoDe("210.29.115.1");
+        //MapUtils.getIpProvinceFromGaoDe("210.29.115.1");
     }
 }
