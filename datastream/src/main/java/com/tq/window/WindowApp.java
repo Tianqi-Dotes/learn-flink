@@ -1,6 +1,7 @@
 package com.tq.window;
 
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple;
 import org.apache.flink.api.java.tuple.Tuple1;
@@ -18,7 +19,8 @@ public class WindowApp {
 
 
         //test01(en);
-        test02(en);
+        //test02(en);
+        test03(en);
         en.execute("WindowApp");
     }
 
@@ -70,5 +72,37 @@ public class WindowApp {
         .window(TumblingProcessingTimeWindows.of(Time.seconds(5)))
                 //.timeWindowAll(Time.seconds(5))//5秒一个窗口
                 .sum(1).print();
+    }
+
+
+    /**
+     * 5秒一个窗口 keyby求和  reduce重写sum
+     *window function 增量处理
+     * data:hadoop,1
+     * flink,1
+     * @param en
+     */
+    public static void test03(StreamExecutionEnvironment en){
+        DataStreamSource<String> input = en.socketTextStream("localhost", 9527);
+        //en.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime);
+
+        input.map(new MapFunction<String, Tuple2<String,Integer>>() {
+            @Override
+            public Tuple2<String, Integer> map(String value) throws Exception {
+                String[] split = value.split(",");
+
+                return Tuple2.of(split[0],Integer.valueOf(split[1]));
+            }
+        }).keyBy(key->key.f0)
+                .window(TumblingProcessingTimeWindows.of(Time.seconds(5)))
+                //.timeWindowAll(Time.seconds(5))//5秒一个窗口
+                //.sum(1)
+                .reduce(new ReduceFunction<Tuple2<String, Integer>>() {//两条数据才会走reduce
+                    @Override
+                    public Tuple2<String, Integer> reduce(Tuple2<String, Integer> value1, Tuple2<String, Integer> value2) throws Exception {
+                        return Tuple2.of(value1.f0,value1.f1+value2.f1);
+                    }
+                })
+                .print();
     }
 }
