@@ -15,6 +15,21 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 
 public class WindowApp {
 
+
+    /**
+     * 重点1窗口：
+     * TumblingWindow 按时间分配 无overlap
+     * SlidingWindow 按时间分配 有overlap 参数：窗口大小，滑动时间
+     * SessionWindow 设定时间间隔 如果时间间隔内没有数据 则下一个窗口
+     * GlobalWindow 不用
+     *
+     * 2Window Function 分为增量和 全量
+     * 增量：reduce agg
+     * 全量：process
+     *
+     * @param args
+     * @throws Exception
+     */
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment en = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -29,7 +44,7 @@ public class WindowApp {
 
     /**
      * note: ProcessingTime  系统时间，与数据本身的时间戳无关，即在window窗口内计算完成的时间 高吞吐 低延时
-     * EventTime 事件产生的时间，即数据产生时自带时间戳 可处理乱序
+     * EventTime 事件产生的时间，即数据产生时自带时间戳 可处理乱序 效率低
      * 5秒一个窗口 求和
      * @param en
      */
