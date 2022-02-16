@@ -9,6 +9,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 
@@ -20,7 +21,8 @@ public class WindowApp {
 
         //test01(en);
         //test02(en);
-        test03(en);
+        //test03(en);
+        test04(en);
         en.execute("WindowApp");
     }
 
@@ -97,12 +99,33 @@ public class WindowApp {
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(5)))
                 //.timeWindowAll(Time.seconds(5))//5秒一个窗口
                 //.sum(1)
+
                 .reduce(new ReduceFunction<Tuple2<String, Integer>>() {//两条数据才会走reduce
                     @Override
                     public Tuple2<String, Integer> reduce(Tuple2<String, Integer> value1, Tuple2<String, Integer> value2) throws Exception {
                         return Tuple2.of(value1.f0,value1.f1+value2.f1);
                     }
                 })
+                .print();
+    }
+
+    /**
+     * processed time window
+     * @param en
+     */
+    public static void test04(StreamExecutionEnvironment en){
+        DataStreamSource<String> input = en.socketTextStream("localhost", 9527);
+        //en.setStreamTimeCharacteristic(TimeCharacteristic.ProcessingTime);
+
+        input.map(new MapFunction<String, Tuple2<String,Integer>>() {//只敲数字
+            @Override
+            public Tuple2<String, Integer> map(String value) throws Exception {
+
+                return Tuple2.of("tq", Integer.valueOf(value));
+            }
+        }).keyBy(key->key.f0)
+                .window(TumblingProcessingTimeWindows.of(Time.seconds(5)))
+                .process(new MyProcessedWindow())
                 .print();
     }
 }
