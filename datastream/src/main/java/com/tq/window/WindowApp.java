@@ -140,7 +140,7 @@ public class WindowApp {
             }
         }).keyBy(key->key.f0)
                 .window(TumblingProcessingTimeWindows.of(Time.seconds(5)))
-                .process(new MyProcessedWindow())
+                .process(new MyProcessedWindow())//窗口功能：取最大
                 .print();
     }
 }
