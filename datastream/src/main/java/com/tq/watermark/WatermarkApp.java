@@ -81,7 +81,7 @@ public class WatermarkApp {
         //处理 延时丢弃数据
         OutputTag<Tuple2<String, Integer>> late = new OutputTag<Tuple2<String, Integer>>("late-data"){};
 
-        //时间watermark 获取wm
+        //时间watermark 获取wm eventtime时间信息
         SingleOutputStreamOperator<String> in = input
                 .assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor<String>(Time.seconds(0)) {//设定延时 如果是0延时数据被抛弃
             @Override
@@ -107,7 +107,7 @@ public class WatermarkApp {
                         return Tuple2.of(value1.f0, value1.f1 + value2.f1);
                     }
                 }, new ProcessWindowFunction<Tuple2<String, Integer>, String, String, TimeWindow>() {
-                    //全量function
+                    //全量function  打印窗口开始 结束时间
                     FastDateFormat dateFormat = FastDateFormat.getInstance("yyyy-MM-dd HH:mm:ss");
 
                     @Override
