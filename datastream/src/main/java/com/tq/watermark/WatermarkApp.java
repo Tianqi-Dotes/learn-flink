@@ -15,6 +15,7 @@ import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTime
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
+import org.apache.flink.util.OutputTag;
 
 public class WatermarkApp {
 
@@ -77,23 +78,27 @@ public class WatermarkApp {
      */
     public static void test02(StreamExecutionEnvironment en){
         DataStreamSource<String> input = en.socketTextStream("localhost", 9527);
+        //处理 延时丢弃数据
+        OutputTag<Tuple2<String, Integer>> late = new OutputTag<Tuple2<String, Integer>>("late-data"){};
 
-        //时间watermark
-        SingleOutputStreamOperator<String> in = input.assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor<String>(Time.seconds(0)) {
+        //时间watermark 获取wm
+        SingleOutputStreamOperator<String> in = input
+                .assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor<String>(Time.seconds(0)) {//设定延时 如果是0延时数据被抛弃
             @Override
             public long extractTimestamp(String element) {
                 String[] split = element.split(",");
                 return Long.valueOf(split[0]);
             }
         });
-        in.map(new MapFunction<String, Tuple2<String,Integer>>() {
+        SingleOutputStreamOperator<String> window = in.map(new MapFunction<String, Tuple2<String, Integer>>() {
             @Override
             public Tuple2<String, Integer> map(String value) throws Exception {
                 String[] split = value.split(",");
-                return Tuple2.of(split[1],Integer.valueOf(split[2]));
+                return Tuple2.of(split[1], Integer.valueOf(split[2]));
             }
-        }).keyBy(x->x.f0).window(TumblingEventTimeWindows.of(Time.seconds(5)))
-                .reduce(new ReduceFunction<Tuple2<String, Integer>>() {
+        }).keyBy(x -> x.f0).window(TumblingEventTimeWindows.of(Time.seconds(5)))
+                .sideOutputLateData(late)
+                .reduce(new ReduceFunction<Tuple2<String, Integer>>() {//计算sum
                     @Override
                     public Tuple2<String, Integer> reduce(Tuple2<String, Integer> value1, Tuple2<String, Integer> value2) throws Exception {
 
@@ -108,15 +113,19 @@ public class WatermarkApp {
                     @Override
                     public void process(String s, Context context, Iterable<Tuple2<String, Integer>> elements, Collector<String> out) throws Exception {
 
+
                         for (Tuple2<String, Integer> element : elements) {
-                            System.out.println("[[[start::"+dateFormat.format(context.window().getStart())+"--end::"
-                                    +dateFormat.format(context.window().getEnd())+"--data:"+element.toString());
+                            System.out.println("[[[start::" + dateFormat.format(context.window().getStart()) + "--end::"
+                                    + dateFormat.format(context.window().getEnd()) + "--data:" + element.toString());
                         }
 
                     }
-                })
-                //.sum(1)
-                .print();
+                });
+        //.sum(1)
+                window.print();
+
+        //处理 延时丢弃数据
+                window.getSideOutput(late).print();
     }
 
 }
